@@ -1,0 +1,27 @@
+name: CI
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+  # We cannot deny warnings because setting this environment variable overrides
+  # the other custom rust flags that are defined in `.cargo/config.toml`.
+  # RUSTFLAGS: -Dwarnings
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - run: podman pull shiftcrypto/da14531
+
+      - run: >
+          podman run
+          --volume ${{github.workspace}}:/checkout
+          --workdir /checkout
+          --env CARGO_TERM_COLOR
+          shiftcrypto/da14531
+          .ci/ci

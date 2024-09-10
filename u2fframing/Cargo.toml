@@ -1,0 +1,11 @@
+[package]
+name = "u2fframing"
+version = "0.1.0"
+authors = ["Bitbox.Swiss contributors <support@bitbox.swiss>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "This package contains codecs for u2fhid standard."
+repository = "https://github.com/bitboxswiss/u2fframing"
+
+[dependencies]
+byteorder = {version="1.5", default-features=false}

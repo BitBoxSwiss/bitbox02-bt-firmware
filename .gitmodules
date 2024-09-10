@@ -1,0 +1,12 @@
+[submodule "da14531-hal"]
+	path = da14531-hal
+	url = http://github.com/BitBoxSwiss/da14531-hal
+[submodule "da14531-sdk"]
+	path = da14531-sdk
+	url = http://github.com/BitBoxSwiss/da14531-sdk
+[submodule "da14531-sdk-macros"]
+	path = da14531-sdk-macros
+	url = http://github.com/BitBoxSwiss/da14531-sdk-macros
+[submodule "da14531"]
+	path = da14531
+	url = http://github.com/BitBoxSwiss/da14531

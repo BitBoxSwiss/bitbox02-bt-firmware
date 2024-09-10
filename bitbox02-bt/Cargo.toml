@@ -1,0 +1,16 @@
+[package]
+name = "bitbox02-bt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cortex-m = {version = "0.7.7", features=["critical-section-single-core"]}
+critical-section = "1.1.1"
+cty = "0.2.2"
+da14531-hal = {path = "../da14531-hal"}
+da14531-sdk = {path = "../da14531-sdk", features=["expose_bindings", "profile_custom_server1", "address_mode_static"]}
+panic-abort = "0.3.2"
+portable-atomic = { version = "1.6.0", default-features = false }
+rtt-target = {version = "0.5.0"}
+u2fframing = {path = "../u2fframing"}
+grounded = "0.2"

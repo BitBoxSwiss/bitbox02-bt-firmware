@@ -1,0 +1,31 @@
+[build]
+target = "thumbv6m-none-eabi"
+
+[patch.crates-io]
+da14531-sdk-macros = {path="../da14531-sdk-macros"}
+
+[target.thumbv6m-none-eabi]
+rustflags = [
+    "-C", "linker=arm-none-eabi-gcc",
+    "-C", "link-arg=-march=armv6s-m",
+    # Generate output map
+    "-C", "link-arg=-Wl,-Map=output.map",
+    "-C", "link-arg=-specs=nano.specs",
+    "-C", "link-arg=-specs=nosys.specs",
+    # By default cargo doesn't link witih libc. We need to link with libc since we use nano libc
+    '-C', "default-linker-libraries",
+    "-C", "link-arg=-Wl,-Tldscript_DA14531.lds",
+]
+
+[profile.release]
+opt-level = "z"
+lto = true
+debug = true # does not impact final binary
+codegen-units = 1
+
+[profile.dev]
+opt-level = "z"
+lto = true
+
+[env]
+DA14531_NON_RET_HEAP_SZ="2048"

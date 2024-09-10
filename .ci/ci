@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -xe
+
+cd bitbox02-bt
+
+cargo check
+
+cargo clippy
+
+# There will be a warning about "unused patch". It does work as expected. See
+# https://github.com/rust-lang/cargo/issues/14003
+make build
+
+make build-release
