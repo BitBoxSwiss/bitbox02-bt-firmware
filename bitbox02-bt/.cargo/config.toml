@@ -1,6 +1,12 @@
 [build]
 target = "thumbv6m-none-eabi"
 
+[source.vendored-sources]
+directory = "vendor"
+
+[source.crates-io]
+replace-with = "vendored-sources"
+
 [patch.crates-io]
 da14531-sdk-macros = {path="../da14531-sdk-macros"}
 

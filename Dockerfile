@@ -61,6 +61,7 @@ RUN --mount=source=.,target=/mnt \
     for patch in `ls /mnt/da14531-sdk/patches`; do patch -p1 < /mnt/da14531-sdk/patches/$patch; done
 
 # Install rust compiler
+ARG BINDGEN_VERSION=0.70.1
 ENV PATH=/opt/cargo/bin:$PATH RUSTUP_HOME=/opt/rustup
 RUN --mount=source=rust-toolchain.toml,target=/mnt/rust-toolchain.toml \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | CARGO_HOME=/opt/cargo sh -s -- --default-toolchain $(grep -oP '(?<=channel = ")[^"]+' /mnt/rust-toolchain.toml) -y && \
@@ -68,4 +69,6 @@ RUN --mount=source=rust-toolchain.toml,target=/mnt/rust-toolchain.toml \
     rustup component add \
     rustfmt \
     clippy \
-    rust-src
+    rust-src \
+    && \
+    CARGO_HOME=/opt/cargo cargo install bindgen-cli --version ${BINDGEN_VERSION} --locked
