@@ -66,16 +66,6 @@ register_app_callbacks! {
     app_on_connection: user_app_connection,
     app_on_adv_undirect_complete: user_app_adv_undirect_complete,
     app_on_disconnect: user_app_disconnect,
-    // app_on_addr_resolve_failed: todo!(),
-    // app_on_addr_solved_ind: todo!(),
-    // app_on_csrk_exch: todo!(),
-}
-
-#[inline]
-fn user_app_adv_undirect_complete(_status: u8) {
-    //if status == GAP_ERR_CANCELED as u8 {
-    //    app().on_start_hibernation();
-    //}
 }
 
 #[inline]
