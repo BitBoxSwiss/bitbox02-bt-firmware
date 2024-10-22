@@ -102,6 +102,7 @@ dependencies = [
  "cty",
  "da14531-sdk-macros",
  "envsubst",
+ "grounded",
  "paste",
  "rtt-target 0.3.1",
 ]

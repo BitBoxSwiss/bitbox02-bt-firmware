@@ -1,8 +1,7 @@
 use core::marker::PhantomData;
-
-use rtt_target::{rprint, rprintln};
-
 use da14531_sdk::app_modules::configure_device_information_service;
+use grounded::const_init::ConstInit;
+use rtt_target::{rprint, rprintln};
 
 /// Defines an interface to access the peripherals
 pub trait PeripheralsDriver {
@@ -37,6 +36,14 @@ where
     fn default() -> Self {
         Self::new()
     }
+}
+
+impl<P, BLE> grounded::const_init::ConstInit for App<P, BLE>
+where
+    P: PeripheralsDriver,
+    BLE: BleDriver,
+{
+    const VAL: Self = Self::new();
 }
 
 /// Business logic of the application

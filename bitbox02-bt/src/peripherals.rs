@@ -23,6 +23,10 @@ pub struct Da14531Peripherals {
     //crg_top: CrgTop,
 }
 
+// Peripherals contains PhantomData<*const ()>, which isn't Sync. As long as this type is never
+// used in an ISR it is safe to implement Sync.
+unsafe impl Sync for Da14531Peripherals {}
+
 impl Da14531Peripherals {
     pub fn new() -> Self {
         dcdc_turn_on_in_boost(SYSCNTL_DCDC_LEVEL_3V0);
