@@ -7,11 +7,9 @@ use da14531_sdk::{
         DEF_SEC_REQ_NEVER,
     },
     ble_stack::host::gap::GAP_GEN_DISCOVERABLE,
-    platform::core_modules::{
-        common::{ADV_ALLOW_SCAN_ANY_CON_ANY, ADV_ALL_CHNLS_EN},
-        rwip::TASK_ID_CUSTS1,
-    },
+    platform::core_modules::common::{ADV_ALLOW_SCAN_ANY_CON_ANY, ADV_ALL_CHNLS_EN},
 };
+use rtt_target::rprintln;
 
 const PAYLOAD_LENGTH: u16 = 512;
 

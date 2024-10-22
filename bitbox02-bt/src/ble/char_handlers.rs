@@ -1,17 +1,14 @@
 use alloc::vec::Vec;
 use da14531_sdk::{
     app_modules::app_env_get_conidx,
-    bindings::KE_API_ID_TASK_ID_CUSTS1,
     ble_stack::{
-        profiles::{
-            custom::custs::custs1::task::{
-                Custs1ValWriteInd, Custs1ValueReqInd, KeMsgDynCusts1ValueReqRsp,
-            },
-            prf::prf_get_task_from_id,
+        profiles::custom::custs::custs1::task::{
+            Custs1ValWriteInd, Custs1ValueReqInd, KeMsgDynCusts1ValueReqRsp,
         },
+        profiles::prf::prf_get_task_from_id,
         rwble_hl::error::HlErr::GAP_ERR_NO_ERROR as ATT_ERR_NO_ERROR,
     },
-    platform::core_modules::{ke::task::KeTaskId, rwip::TASK_APP},
+    platform::core_modules::rwip::{KeApiId::TASK_ID_CUSTS1, KeTaskType::TASK_APP},
 };
 use grounded::uninit::GroundedCell;
 use rtt_target::rprintln;
@@ -88,7 +85,7 @@ pub fn data_out_read_handler(param: &Custs1ValueReqInd) {
     rprintln!("read");
     let mut response = KeMsgDynCusts1ValueReqRsp::<RESPONSE_LEN>::new(
         TASK_APP as u16,
-        prf_get_task_from_id(KE_API_ID_TASK_ID_CUSTS1 as KeTaskId),
+        prf_get_task_from_id(TASK_ID_CUSTS1 as u16),
     );
 
     let conidx = app_env_get_conidx(param.conidx);
