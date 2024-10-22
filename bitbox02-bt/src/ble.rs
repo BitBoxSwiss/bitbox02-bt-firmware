@@ -20,7 +20,7 @@ impl BleDriver for Da14531Ble {
         app_easy_gap_advertise_stop();
     }
 
-    fn disconnect(connection_handle: u32) {
-        app_easy_gap_disconnect(connection_handle as u8);
+    fn disconnect(connection_handle: u8) {
+        app_easy_gap_disconnect(connection_handle);
     }
 }

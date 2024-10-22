@@ -19,7 +19,7 @@ pub trait PeripheralsDriver {
 pub trait BleDriver {
     fn start_adverstising();
     fn stop_adverstising();
-    fn disconnect(connection_handle: u32);
+    fn disconnect(connection_handle: u8);
 }
 
 /// Holds the state of the application
@@ -30,7 +30,7 @@ where
     BLE: 'static + BleDriver,
 {
     peripherals: Option<P>,
-    connection_handle: Option<u32>,
+    connection_handle: Option<u8>,
     _ble: PhantomData<BLE>,
     //timer: Option<AppTimer>,
 }
@@ -141,9 +141,9 @@ where
     }
 
     /// Connect event handler
-    pub fn on_connect(&mut self, connection_handle: Option<u32>) {
-        rprintln!("on_connect");
+    pub fn on_connect(&mut self, connection_handle: Option<u8>) {
         self.connection_handle = connection_handle;
+        rprintln!("on_connect id: {}", connection_handle.unwrap());
     }
 
     /// Disonnect event handler
