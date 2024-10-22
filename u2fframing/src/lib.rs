@@ -29,11 +29,13 @@ use core::result;
 pub const HEADER_INIT_LEN: usize = 7;
 pub const HEADER_CONT_LEN: usize = 5;
 
-mod error {
+pub mod error {
     #[derive(Debug)]
     pub enum Error {
-        /// Buffer must be at least 7 bytes long to contain the header for the packet
-        BufferSize,
+        /// Buffer must fit the whole message (u16 is the required len)
+        BufferSize(u16),
+        /// Packet size must be 7 bytes for init packet and 5 for continuation packets
+        PacketSize,
         /// CMD must have highest bit set
         InvalidCmd,
         /// Packets must have the same CID
@@ -42,6 +44,8 @@ mod error {
         UnexpectedSeq,
         /// It is not possible to send more than 127 continuation packets
         TooManyPackets,
+        /// Init packet must come before continuation
+        ExpectingInitPacket,
     }
 }
 
@@ -71,36 +75,31 @@ impl Encoder {
     }
 
     /// Needs 7 extra bytes in buf for first header.
+    /// `message` length must fit in u16
     /// Returns bytes read from message
-    pub fn start(
-        &mut self,
-        mut buf: &mut [u8],
-        message: &[u8],
-        len: u16,
-        cmd: u8,
-    ) -> Result<usize> {
+    pub fn start(&mut self, mut packet: &mut [u8], message: &[u8], cmd: u8) -> Result<usize> {
         // Buffer must be large enough to fit header
-        if buf.len() < HEADER_INIT_LEN {
-            return Err(Error::BufferSize);
+        if packet.len() < HEADER_INIT_LEN {
+            return Err(Error::PacketSize);
         }
 
-        BigEndian::write_u32(buf, self.cid);
+        BigEndian::write_u32(packet, self.cid);
 
         // Bit 7 must always be set
         if (cmd & 0x80) != 0x80 {
             return Err(Error::InvalidCmd);
         }
-        buf[4] = cmd;
+        packet[4] = cmd;
 
         // Length is encoded using big endianess
-        BigEndian::write_u16(&mut buf[5..], len);
-        self.len = len;
+        BigEndian::write_u16(&mut packet[5..], message.len().try_into().unwrap());
+        self.len = message.len().try_into().unwrap();
 
         // Skip forward, over the header
-        buf = &mut buf[HEADER_INIT_LEN..];
+        packet = &mut packet[HEADER_INIT_LEN..];
 
-        let end = buf.len().min(message.len()).min(len as usize);
-        buf[..end].copy_from_slice(&message[..end]);
+        let end = packet.len().min(message.len());
+        packet[..end].copy_from_slice(&message[..end]);
         self.written = end as u16;
         Ok(end)
     }
@@ -109,7 +108,7 @@ impl Encoder {
     /// Returns bytes read from message
     pub fn continuation(&mut self, mut buf: &mut [u8], message: &[u8]) -> Result<usize> {
         if buf.len() < HEADER_CONT_LEN {
-            return Err(Error::BufferSize);
+            return Err(Error::PacketSize);
         }
         // Write header of rest of packets
         BigEndian::write_u32(buf, self.cid);
@@ -133,7 +132,7 @@ impl Encoder {
 }
 
 pub struct Decoder {
-    inner: DecoderState,
+    state: DecoderState,
 }
 
 enum DecoderState {
@@ -141,91 +140,122 @@ enum DecoderState {
     Reading {
         cid: u32,
         len: u16,
+        read: u16,
         cmd: u8,
         seq: u8,
-        read: u16,
     },
+    Done {
+        cid: u32,
+        cmd: u8,
+    },
+}
+
+#[derive(Debug)]
+pub enum NeedMore {
+    /// Returns number of bytes read
+    NeedMore(u16),
+    /// Returns number of bytes read
+    Done(u16),
 }
 
 impl Decoder {
     pub const fn new() -> Self {
         Decoder {
-            inner: DecoderState::Pending,
+            state: DecoderState::Pending,
         }
     }
 
     /// Decode function. Will fail in case CID doesn't match in every `buf`. Returns bytes read.
-    pub fn decode(&mut self, message: &mut [u8], buf: &[u8]) -> Result<usize> {
-        match self.inner {
-            DecoderState::Pending => {
-                if buf.len() < HEADER_INIT_LEN || message.len() < HEADER_INIT_LEN {
-                    return Err(Error::BufferSize);
-                }
-                let cid = BigEndian::read_u32(&buf[..4]);
-                let cmd = buf[4];
-                if (cmd & 0x80) != 0x80 {
-                    return Err(Error::InvalidCmd);
-                }
-                let len = BigEndian::read_u16(&buf[5..7]);
-                let end = message.len().min(buf.len() - 7).min(len as usize);
-                message[..end].copy_from_slice(&buf[7..7 + end]);
-                self.inner = DecoderState::Reading {
+    pub fn decode(&mut self, message: &mut [u8], packet: &[u8]) -> Result<NeedMore> {
+        if packet.len() < HEADER_CONT_LEN {
+            // We can't even check what kind of packet it is
+            return Err(Error::PacketSize);
+        }
+        // Check if packet is init or continuation, the cmd/seq byte's msb decides
+        if (packet[4] & 0x80) == 0x80 {
+            // init packet
+            if packet.len() < HEADER_INIT_LEN {
+                // It could potentially be a continuation packet
+                return Err(Error::PacketSize);
+            }
+            let cid = BigEndian::read_u32(&packet[..4]);
+            let cmd = packet[4];
+            let len = BigEndian::read_u16(&packet[5..7]);
+            if message.len() < len.into() {
+                // The `message` buffer needs to fit the whole message. Try again with a larger
+                // buffer
+                return Err(Error::BufferSize(len));
+            }
+
+            let end = message.len().min(packet.len() - 7).min(len as usize);
+            message[..end].copy_from_slice(&packet[7..7 + end]);
+            if (end as u16) < len {
+                self.state = DecoderState::Reading {
                     cid,
                     len,
-                    cmd,
-                    seq: 0,
                     read: end as u16,
+                    seq: 0,
+                    cmd,
                 };
-                Ok(end)
+                Ok(NeedMore::NeedMore(end as u16))
+            } else {
+                self.state = DecoderState::Done { cid, cmd };
+                Ok(NeedMore::Done(len))
             }
-            DecoderState::Reading {
-                cid,
-                ref mut seq,
-                ref mut read,
-                len,
-                ..
-            } => {
-                if buf.len() < HEADER_CONT_LEN || message.len() < HEADER_CONT_LEN {
-                    return Err(Error::BufferSize);
-                }
-                let read_cid = BigEndian::read_u32(&buf[..4]);
-                if cid != read_cid {
-                    return Err(Error::NotSameCid);
-                }
-                let read_seq = buf[4];
-                if *seq != read_seq {
-                    return Err(Error::UnexpectedSeq);
-                }
-                let end = message.len().min(buf.len() - 5).min((len - *read) as usize);
-                message[..end].copy_from_slice(&buf[5..5 + end]);
-                *read += end as u16;
-                *seq += 1;
-                Ok(end)
-            }
-        }
-    }
-
-    pub fn length(&self) -> u16 {
-        if let DecoderState::Reading { len, .. } = self.inner {
-            len
         } else {
-            panic!();
+            // continuation packet
+            match self.state {
+                DecoderState::Pending => Err(Error::ExpectingInitPacket),
+                DecoderState::Done { .. } => Err(Error::ExpectingInitPacket),
+                DecoderState::Reading {
+                    cid,
+                    len,
+                    read,
+                    seq,
+                    cmd,
+                } => {
+                    let read_cid = BigEndian::read_u32(&packet[..4]);
+                    if cid != read_cid {
+                        return Err(Error::NotSameCid);
+                    }
+                    let read_seq = packet[4];
+                    if seq != read_seq {
+                        return Err(Error::UnexpectedSeq);
+                    }
+                    let start = read as usize;
+                    let end = (packet.len() - 5).min((len - read) as usize);
+                    message[start..start + end].copy_from_slice(&packet[5..5 + end]);
+                    if start + end == len.into() {
+                        self.state = DecoderState::Done { cid, cmd };
+                        Ok(NeedMore::Done(len))
+                    } else {
+                        self.state = DecoderState::Reading {
+                            cid,
+                            len,
+                            read: read + end as u16,
+                            seq: seq + 1,
+                            cmd,
+                        };
+                        Ok(NeedMore::NeedMore(read + end as u16))
+                    }
+                }
+            }
         }
     }
 
     pub fn cmd(&self) -> u8 {
-        if let DecoderState::Reading { cmd, .. } = self.inner {
-            cmd
-        } else {
-            panic!();
+        match self.state {
+            DecoderState::Pending => panic!(),
+            DecoderState::Reading { cmd, .. } => cmd,
+            DecoderState::Done { cmd, .. } => cmd,
         }
     }
 
     pub fn cid(&self) -> u32 {
-        if let DecoderState::Reading { cid, .. } = self.inner {
-            cid
-        } else {
-            panic!();
+        match self.state {
+            DecoderState::Pending => panic!(),
+            DecoderState::Reading { cid, .. } => cid,
+            DecoderState::Done { cid, .. } => cid,
         }
     }
 }
@@ -298,7 +328,7 @@ mod tests {
         let msg = b"\x01\x02\x03\x04";
         let mut codec = Encoder::new(cid);
         let mut buf = [0u8; 4];
-        let Err(Error::BufferSize) = codec.start(&mut buf[..], msg, msg.len() as u16, cmd) else {
+        let Err(Error::PacketSize) = codec.start(&mut buf[..], msg, msg.len() as u16, cmd) else {
             panic!("Should've returned InvalidBufferSize");
         };
     }
@@ -322,38 +352,60 @@ mod tests {
         let mut msg = [0u8; 64];
         packet[..11].copy_from_slice(b"\xEE\xEE\xEE\xEE\xFF\x00\x04\x01\x02\x03\x04");
 
-        let len = decoder.decode(&mut msg[..], &packet[..]).unwrap();
-        assert_eq!(len, 4);
+        match decoder.decode(&mut msg[..], &packet[..]) {
+            Ok(NeedMore::Done(len)) => {
+                assert_eq!(len, 4);
 
-        assert_eq!(decoder.length(), 4);
-        assert_eq!(decoder.cid(), 0xEEEEEEEE);
-        assert_eq!(decoder.cmd(), 0xFF);
-        assert_eq!(&msg[..len], b"\x01\x02\x03\x04");
+                assert_eq!(decoder.cid(), 0xEEEEEEEE);
+                assert_eq!(decoder.cmd(), 0xFF);
+                assert_eq!(&msg[..len as usize], b"\x01\x02\x03\x04");
+            }
+            _ => panic!(),
+        }
     }
 
     #[test]
     fn test_decode_multi() {
-        let payload: Vec<u8> = (0..65u8).collect();
+        let payload: Vec<u8> = (0..150u8).collect();
         let mut decoder = Decoder::default();
         let mut packet1 = [0u8; 64];
         let mut packet2 = [0u8; 64];
-        packet1[..7].copy_from_slice(b"\xEE\xEE\xEE\xEE\x91\x00\x41");
+        let mut packet3 = [0u8; 64];
+        packet1[..7].copy_from_slice(b"\xEE\xEE\xEE\xEE\x91\x00\x96");
         packet1[7..64].copy_from_slice(&payload[..57]);
         packet2[..5].copy_from_slice(b"\xEE\xEE\xEE\xEE\x00");
-        packet2[5..13].copy_from_slice(&payload[57..]);
+        packet2[5..64].copy_from_slice(&payload[57..57 + 59]);
+        packet3[..5].copy_from_slice(b"\xEE\xEE\xEE\xEE\x01");
+        packet3[5..39].copy_from_slice(&payload[57 + 59..57 + 59 + 34]);
 
-        let mut data = [0u8; 100];
-        let len = decoder.decode(&mut data[..], &packet1).unwrap();
-        assert_eq!(len, 57);
+        let mut data = [0u8; 200];
+        match decoder.decode(&mut data[..], &packet1) {
+            Ok(NeedMore::NeedMore(len)) => {
+                assert_eq!(len, 57);
 
-        assert_eq!(decoder.length(), 65);
-        assert_eq!(decoder.cid(), 0xEEEEEEEE);
-        assert_eq!(decoder.cmd(), 0x91);
+                assert_eq!(decoder.cid(), 0xEEEEEEEE);
+                assert_eq!(decoder.cmd(), 0x91);
+            }
+            _ => panic!(),
+        }
 
-        let len = decoder.decode(&mut data[len..], &packet2).unwrap();
-        assert_eq!(len, 8);
+        match decoder.decode(&mut data[..], &packet2) {
+            Ok(NeedMore::NeedMore(len)) => {
+                assert_eq!(len, 57 + 59);
 
-        assert_eq!(&data[..decoder.length() as usize], &payload[..]);
+                assert_eq!(decoder.cid(), 0xEEEEEEEE);
+                assert_eq!(decoder.cmd(), 0x91);
+            }
+            unexpected => panic!("{:?}", unexpected),
+        }
+
+        match decoder.decode(&mut data[..], &packet3) {
+            Ok(NeedMore::Done(len)) => {
+                assert_eq!(len, 150);
+                assert_eq!(&data[..len as usize], &payload[..]);
+            }
+            _ => panic!(),
+        }
     }
 
     #[test]
@@ -399,8 +451,8 @@ mod tests {
         let mut msg = [0u8; 64];
         packet[..11].copy_from_slice(b"\xEE\xEE\xEE\xEE\x00\x00\x04\x01\x02\x03\x04");
 
-        let Err(Error::InvalidCmd) = decoder.decode(&mut msg[..], &packet) else {
-            panic!("Should've returned InvalidCmd");
+        let Err(Error::ExpectingInitPacket) = decoder.decode(&mut msg[..], &packet) else {
+            panic!("Should've returned ExpectingInitPacket");
         };
     }
 }
