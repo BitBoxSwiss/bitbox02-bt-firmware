@@ -107,4 +107,7 @@ configure_device_information_service! {
 }
 
 #[no_mangle]
-pub static USER_DEVICE_NAME: &str = "bitbox";
+static USER_DEVICE_NAME: &str = "";
+
+#[no_mangle]
+static USER_DEVICE_APPEARANCE: u16 = 0x0240; // Keyring appearance

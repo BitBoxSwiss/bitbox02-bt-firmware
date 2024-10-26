@@ -16,7 +16,7 @@ const PAYLOAD_LENGTH: u16 = 512;
 // Setup service database
 configure_custom_server1_service![
     svc1: {
-        uuid: 0xB17B, // BITB(OX)
+        uuid: 0xE1511A45_F3DB_44C0_82B8_6C880790D1F1_u128,
         characteristics: {
             data_in: {
                 uuid: 0x0001,
