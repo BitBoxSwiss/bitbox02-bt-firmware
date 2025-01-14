@@ -14,3 +14,4 @@ portable-atomic = { version = "1.6.0", default-features = false }
 rtt-target = {version = "0.5.0"}
 u2fframing = {path = "../u2fframing"}
 grounded = "0.2"
+hex = {version = "0.4.3", default-features = false, features=["alloc"]}

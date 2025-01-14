@@ -1,14 +1,19 @@
 use da14531_hal::{
-    //cm::{peripheral::SCB, Peripherals as CmPeripherals},
-    //crg_aon::{CrgAon, CrgAonExt},
     //crg_top::{CrgTop, CrgTopExt},
     //nvic::{Nvic, NvicExt},
-    crg_aon::CrgAonExt,
+    //crg_aon::CrgAonExt,
+    //cm::{peripheral::SCB, Peripherals as CmPeripherals},
+    crg_aon::{CrgAon, CrgAonExt},
     pac::Peripherals,
     sys_wdog::{SysWdog, SysWdogExt},
 };
+use da14531_sdk::bindings::{GPIO_FUNCTION::*, GPIO_PUPD_INPUT, GPIO_PUPD_OUTPUT};
 use da14531_sdk::platform::{
-    driver::syscntl::{dcdc_turn_on_in_boost, SyscntlDcdcLevel::SYSCNTL_DCDC_LEVEL_3V0},
+    driver::{
+        gpio::GPIO_ConfigurePin,
+        syscntl::{dcdc_turn_on_in_boost, SyscntlDcdcLevel::SYSCNTL_DCDC_LEVEL_3V0},
+        uart,
+    },
     system_library::patch_func,
 };
 
@@ -19,7 +24,7 @@ pub struct Da14531Peripherals {
     sys_wdog: SysWdog,
     //nvic: Nvic,
     //scb: SCB,
-    //crg_aon: CrgAon,
+    crg_aon: CrgAon,
     //crg_top: CrgTop,
 }
 
@@ -43,13 +48,25 @@ impl Da14531Peripherals {
         //let crg_top = dp.CRG_TOP.constrain();
         let mut crg_aon = dp.CRG_AON.constrain();
 
+        // Disable haradware reset, needed beacuse the pin is reused for Uart TX
+        crg_aon.hardware_reset_dis(true);
+
+        // Initialize uart
+        uart::init();
+
+        GPIO_ConfigurePin(0, GPIO_PUPD_OUTPUT, PID_UART1_TX, false);
+        GPIO_ConfigurePin(1, GPIO_PUPD_INPUT, PID_UART1_RX, false);
+        GPIO_ConfigurePin(3, GPIO_PUPD_INPUT, PID_UART1_CTSN, false);
+        GPIO_ConfigurePin(4, GPIO_PUPD_OUTPUT, PID_UART1_RTSN, false);
+
         // Enable pad latch
         crg_aon.set_pad_latch_en(true);
 
         Da14531Peripherals {
             sys_wdog,
+            crg_aon,
+            //uart,
             //nvic,
-            //crg_aon,
             //crg_top,
             //scb,
         }

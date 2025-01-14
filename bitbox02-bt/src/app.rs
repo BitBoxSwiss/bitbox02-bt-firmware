@@ -1,5 +1,6 @@
 use core::marker::PhantomData;
 use da14531_sdk::app_modules::configure_device_information_service;
+use da14531_sdk::platform::driver::uart;
 use grounded::const_init::ConstInit;
 use rtt_target::{rprint, rprintln};
 
