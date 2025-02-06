@@ -54,7 +54,12 @@ where
 
 fn timedout_call() {
     static mut COUNTER: usize = 0;
-    const PRODUCT: &[&[u8]] = &[b"Bitbox02p", b"bb02p-bootloader"];
+    const PRODUCT: &[&[u8]] = &[
+        b"Bitbox02p",
+        b"no connection",
+        b"bb02p-bootloader",
+        b"no connection",
+    ];
 
     AppTimer::new(500, || {
         let mut update = KeMsgDynCusts1ValIndReq::<64>::new(
@@ -64,15 +69,15 @@ fn timedout_call() {
         update.fields().conidx = 0;
         update.fields().handle = crate::ble::config::char_idx_map::CHAR_PRODUCT_HANDLE;
         let counter = unsafe { &mut COUNTER };
-        let len = PRODUCT[*counter % 2].len();
+        let len = PRODUCT[*counter % PRODUCT.len()].len();
 
         update.fields().length = len as u16;
 
         let value = unsafe { update.fields().value.as_mut_slice(len) };
-        value[..len].copy_from_slice(PRODUCT[*counter % 2]);
+        value[..len].copy_from_slice(PRODUCT[*counter % PRODUCT.len()]);
 
         rprintln!("updating with {}", unsafe {
-            core::str::from_utf8_unchecked(PRODUCT[*counter % 2])
+            core::str::from_utf8_unchecked(PRODUCT[*counter % PRODUCT.len()])
         });
 
         update.send();
