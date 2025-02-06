@@ -25,7 +25,7 @@ elif command -v docker &>/dev/null; then
 elif command -v podman &>/dev/null; then
   RUNTIME=podman
 else
-  echo "No container runtime found" &>2
+  echo "No container runtime found" >&2
   exit 1
 fi
 
