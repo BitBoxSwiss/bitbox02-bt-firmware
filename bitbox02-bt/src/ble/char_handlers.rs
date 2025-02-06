@@ -37,8 +37,8 @@ impl grounded::const_init::ConstInit for CommunicationState {
 
 static STATE: GroundedCell<CommunicationState> = GroundedCell::const_init();
 
-pub fn data_in_write_handler(param: &Custs1ValWriteInd) {
-    rprintln!("data_in_write_handler, length: {}", param.length);
+pub fn rx_write_handler(param: &Custs1ValWriteInd) {
+    rprintln!("rx_write_handler, length: {}", param.length);
     if param.length > 64 {
         rprintln!("write, got more bytes than expected");
         return;
@@ -48,7 +48,7 @@ pub fn data_in_write_handler(param: &Custs1ValWriteInd) {
     uart::send_blocking(input);
 }
 
-pub fn data_out_read_handler(param: &Custs1ValueReqInd) {
+pub fn tx_read_handler(param: &Custs1ValueReqInd) {
     const RESPONSE_LEN: u16 = 64;
     let mut response = KeMsgDynCusts1ValueReqRsp::<RESPONSE_LEN>::new(
         TASK_APP as u16,
@@ -70,6 +70,47 @@ pub fn data_out_read_handler(param: &Custs1ValueReqInd) {
     uart::recv_blocking(&mut value[..]);
     rprintln!("UART: read (data: {})", hex::encode(value));
     response.fields().length = 64;
+
+    // Provide the ATT error code.
+    response.fields().status = ATT_ERR_NO_ERROR as u8;
+
+    rprintln!("BLE: Send message (len: {})", response.fields().length);
+
+    response.send();
+}
+
+pub fn product_write_handler(param: &Custs1ValWriteInd) {
+    rprintln!("product_write_handler, length: {}", param.length);
+}
+
+pub fn product_read_handler(param: &Custs1ValueReqInd) {
+    rprintln!("product read handler called");
+    const PRODUCT: &[u8] = b"Bitbox02p";
+    const RESPONSE_LEN: u16 = 64;
+    let mut response = KeMsgDynCusts1ValueReqRsp::<RESPONSE_LEN>::new(
+        TASK_APP as u16,
+        prf_get_task_from_id(TASK_ID_CUSTS1 as u16),
+    );
+
+    let conidx = app_env_get_conidx(param.conidx);
+
+    // Provide the connection index.
+    response.fields().conidx = conidx;
+
+    // Provide the attribute index.
+    response.fields().att_idx = param.att_idx;
+
+    // Value len
+    let len = PRODUCT.len();
+    if len > RESPONSE_LEN.into() {
+        panic!("too long");
+    }
+
+    // Value field
+    let value = unsafe { response.fields().value.as_mut_slice(len) };
+
+    value[..len].copy_from_slice(PRODUCT);
+    response.fields().length = len as u16;
 
     // Provide the ATT error code.
     response.fields().status = ATT_ERR_NO_ERROR as u8;

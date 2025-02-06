@@ -1,5 +1,10 @@
 use core::marker::PhantomData;
 use da14531_sdk::app_modules::configure_device_information_service;
+use da14531_sdk::app_modules::timer::AppTimer;
+use da14531_sdk::ble_stack::profiles::custom::custs::custs1::task::KeMsgDynCusts1ValIndReq;
+use da14531_sdk::ble_stack::profiles::prf::prf_get_task_from_id;
+use da14531_sdk::ble_stack::rwble_hl::error::HlErr::GAP_ERR_NO_ERROR as ATT_ERR_NO_ERROR;
+use da14531_sdk::platform::core_modules::rwip::{KeApiId::TASK_ID_CUSTS1, KeTaskType::TASK_APP};
 use da14531_sdk::platform::driver::uart;
 use grounded::const_init::ConstInit;
 use rtt_target::{rprint, rprintln};
@@ -47,6 +52,37 @@ where
     const VAL: Self = Self::new();
 }
 
+fn timedout_call() {
+    static mut COUNTER: usize = 0;
+    const PRODUCT: &[&[u8]] = &[b"Bitbox02p", b"bb02p-bootloader"];
+
+    AppTimer::new(500, || {
+        let mut update = KeMsgDynCusts1ValIndReq::<64>::new(
+            TASK_APP as u16,
+            prf_get_task_from_id(TASK_ID_CUSTS1 as u16),
+        );
+        update.fields().conidx = 0;
+        update.fields().handle = crate::ble::config::char_idx_map::CHAR_PRODUCT_HANDLE;
+        let counter = unsafe { &mut COUNTER };
+        let len = PRODUCT[*counter % 2].len();
+
+        update.fields().length = len as u16;
+
+        let value = unsafe { update.fields().value.as_mut_slice(len) };
+        value[..len].copy_from_slice(PRODUCT[*counter % 2]);
+
+        rprintln!("updating with {}", unsafe {
+            core::str::from_utf8_unchecked(PRODUCT[*counter % 2])
+        });
+
+        update.send();
+
+        *counter += 1;
+
+        timedout_call()
+    });
+}
+
 /// Business logic of the application
 impl<P, BLE> App<P, BLE>
 where
@@ -85,6 +121,7 @@ where
     /// Connect event handler
     pub fn on_connect(&mut self, connection_handle: Option<u8>) {
         self.connection_handle = connection_handle;
+        timedout_call();
         rprintln!("on_connect id: {}", connection_handle.unwrap());
     }
 

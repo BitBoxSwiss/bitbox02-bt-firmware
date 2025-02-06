@@ -36,4 +36,4 @@ debug-assertions = false
 overflow-checks = false
 
 [env]
-DA14531_NON_RET_HEAP_SZ="2048"
+DA14531_NON_RET_HEAP_SZ="1024"

@@ -18,19 +18,27 @@ configure_custom_server1_service![
     svc1: {
         uuid: 0xE1511A45_F3DB_44C0_82B8_6C880790D1F1_u128,
         characteristics: {
-            data_in: {
+            rx: {
                 uuid: 0x0001,
                 permissions: (WRITE_ENABLED | WRITE_REQUEST_ACCEPTED | WRITE_COMMAND_ACCEPTED),
                 length: PAYLOAD_LENGTH,
-                user_description: "Data in",
-                write_handler: crate::ble::char_handlers::data_in_write_handler,
+                user_description: "RX",
+                write_handler: crate::ble::char_handlers::rx_write_handler,
             },
-            data_out: {
+            tx: {
                 uuid: 0x0002,
                 permissions: (READ_ENABLED),
                 length: PAYLOAD_LENGTH,
-                user_description: "Data out",
-                read_handler: crate::ble::char_handlers::data_out_read_handler,
+                user_description: "TX",
+                read_handler: crate::ble::char_handlers::tx_read_handler,
+            },
+            product: {
+                uuid: 0x0003,
+                permissions: (READ_ENABLED | INDICATION_ENABLED),
+                length: 20,
+                user_description: "Product",
+                read_handler: crate::ble::char_handlers::product_read_handler,
+                write_handler: crate::ble::char_handlers::product_write_handler,
             }
         },
     }
