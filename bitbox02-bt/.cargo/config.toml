@@ -32,6 +32,8 @@ codegen-units = 1
 [profile.dev]
 opt-level = "z"
 lto = true
+debug-assertions = false
+overflow-checks = false
 
 [env]
 DA14531_NON_RET_HEAP_SZ="2048"

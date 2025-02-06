@@ -21,6 +21,5 @@ monitor reset
 # correct RTT Block. We specify the block address here.
 eval "monitor exec SetRTTAddr %p", &_SEGGER_RTT
 
-# Start process but immediately halt the processor
-#stepi
+# Start process
 continue
