@@ -27,7 +27,7 @@ configure_custom_server1_service![
             },
             tx: {
                 uuid: 0x0002,
-                permissions: (READ_ENABLED),
+                permissions: (INDICATION_AUTH),
                 length: PAYLOAD_LENGTH,
                 user_description: "TX",
                 read_handler: crate::ble::char_handlers::tx_read_handler,

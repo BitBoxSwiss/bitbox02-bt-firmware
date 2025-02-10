@@ -52,7 +52,7 @@ where
     const VAL: Self = Self::new();
 }
 
-fn timedout_call() {
+fn change_product_char() {
     static mut COUNTER: usize = 0;
     const PRODUCT: &[&[u8]] = &[
         b"Bitbox02p",
@@ -84,7 +84,7 @@ fn timedout_call() {
 
         *counter += 1;
 
-        timedout_call()
+        change_product_char()
     });
 }
 
@@ -111,23 +111,36 @@ where
         rprintln!("done!");
     }
 
-    /// On app init
+    /// On app init called before main event loop
     pub fn init(&mut self) {
         rprintln!("init");
     }
 
+    /// On db init complete is called when the ble services db is initialized
+    pub fn on_set_dev_config_complete(&mut self) {
+        rprintln!("on_set_dev_config_complete");
+        //change_product_char();
+    }
+
+    /// On db init complete is called when the ble services db is initialized
+    pub fn on_db_init_complete(&mut self) {
+        rprintln!("on_db_init_complete");
+        change_product_char();
+    }
+
     /// Start advertising handler
     pub fn on_start_advertising(&mut self) {
-        rprintln!("App::on_start_advertising()");
+        let state = unsafe { da14531_sdk::bindings::ke_state_get(TASK_APP as u16) };
+        rprintln!("App::on_start_advertising() {}", state);
 
         BLE::start_adverstising();
     }
 
     /// Connect event handler
     pub fn on_connect(&mut self, connection_handle: Option<u8>) {
+        let state = unsafe { da14531_sdk::bindings::ke_state_get(TASK_APP as u16) };
         self.connection_handle = connection_handle;
-        timedout_call();
-        rprintln!("on_connect id: {}", connection_handle.unwrap());
+        rprintln!("on_connect id: {} {}", connection_handle.unwrap(), state);
     }
 
     /// Disonnect event handler
@@ -143,10 +156,6 @@ where
     pub fn peripherals(&mut self) -> &mut P {
         self.peripherals.as_mut().unwrap()
     }
-}
-
-configure_device_information_service! {
-    manufacturer_name: "BitBox Swiss"
 }
 
 #[no_mangle]
