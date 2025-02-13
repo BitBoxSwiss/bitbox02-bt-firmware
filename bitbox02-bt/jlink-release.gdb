@@ -1,6 +1,6 @@
 # `target extended-remote :2331` is enough if you run on the same machine as
 # where you run the jlink gdb server
-target extended-remote host.docker.internal:2331
+target extended-remote :2331
 
 set print asm-demangle on
 
