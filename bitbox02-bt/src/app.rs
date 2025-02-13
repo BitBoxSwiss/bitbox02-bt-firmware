@@ -119,13 +119,13 @@ where
     /// On db init complete is called when the ble services db is initialized
     pub fn on_set_dev_config_complete(&mut self) {
         rprintln!("on_set_dev_config_complete");
-        //change_product_char();
+        change_product_char();
     }
 
     /// On db init complete is called when the ble services db is initialized
     pub fn on_db_init_complete(&mut self) {
         rprintln!("on_db_init_complete");
-        change_product_char();
+        //change_product_char();
     }
 
     /// Start advertising handler
