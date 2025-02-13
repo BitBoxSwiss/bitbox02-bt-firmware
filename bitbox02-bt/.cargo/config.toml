@@ -36,4 +36,5 @@ debug-assertions = false
 overflow-checks = false
 
 [env]
-DA14531_NON_RET_HEAP_SZ="1024"
+DA14531_NON_RET_HEAP_SZ="500"
+DA14531_CFG_ENABLE_SMP_SECURE="Defined"

@@ -8,7 +8,7 @@ cortex-m = {version = "0.7.7", features=["critical-section-single-core"]}
 critical-section = "1.1.1"
 cty = "0.2.2"
 da14531-hal = {path = "../da14531-hal"}
-da14531-sdk = {path = "../da14531-sdk", features=["sleep_mode_off", "expose_bindings", "profile_custom_server1", "address_mode_static", "app_security"], default-features= false}
+da14531-sdk = {path = "../da14531-sdk", features=["sleep_mode_off", "expose_bindings", "profile_custom_server1", "address_mode_priv_rpa_rand", "app_security"], default-features= false}
 panic-abort = "0.3.2"
 portable-atomic = { version = "1.6.0", default-features = false }
 rtt-target = {version = "0.5.0"}
