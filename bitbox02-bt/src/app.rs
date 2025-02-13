@@ -159,7 +159,7 @@ where
 }
 
 #[no_mangle]
-static USER_DEVICE_NAME: &str = "";
+static USER_DEVICE_NAME: &str = "BitBox02+";
 
 #[no_mangle]
 static USER_DEVICE_APPEARANCE: u16 = 0x0240; // Keyring appearance
