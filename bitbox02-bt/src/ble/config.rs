@@ -20,21 +20,21 @@ configure_custom_server1_service![
         characteristics: {
             rx: {
                 uuid: 0x0001,
-                permissions: (WRITE_AUTH | WRITE_REQUEST_ACCEPTED | WRITE_COMMAND_ACCEPTED),
+                permissions: (WRITE_SECURE | WRITE_REQUEST_ACCEPTED | WRITE_COMMAND_ACCEPTED),
                 length: PAYLOAD_LENGTH,
                 user_description: "RX",
                 write_handler: crate::ble::char_handlers::rx_write_handler,
             },
             tx: {
                 uuid: 0x0002,
-                permissions: (READ_AUTH),
+                permissions: (READ_SECURE),
                 length: PAYLOAD_LENGTH,
                 user_description: "TX",
                 read_handler: crate::ble::char_handlers::tx_read_handler,
             },
             product: {
                 uuid: 0x0003,
-                permissions: (READ_AUTH | INDICATION_AUTH),
+                permissions: (READ_SECURE | INDICATION_SECURE),
                 length: 20,
                 user_description: "Product",
                 read_handler: crate::ble::char_handlers::product_read_handler,
